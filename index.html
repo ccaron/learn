@@ -23,12 +23,17 @@
   .tag { display: inline-block; font-size: 0.75em; border-radius: 999px; padding: 2px 8px; margin-right: 4px; }
   .ms .tag { color: #ffd166; border: 1px solid #b8913a; }
   .hs .tag { color: #9ecbff; border: 1px solid #3468c0; }
+  #search { width: 100%; box-sizing: border-box; padding: 12px 16px; margin: 0 0 32px; font-size: 1.05em; color: #eee; background: #1a2032; border: 1px solid #2f3850; border-radius: 10px; outline: none; }
+  #search:focus { border-color: #6cf; }
+  #search::placeholder { color: #78839c; }
+  #noResults { display: none; color: #9ab; text-align: center; margin: 20px 0; }
 </style>
 </head>
 <body>
 <main>
   <h1>Learning Tools</h1>
   <p class="sub">Interactive explorers for math class — poke at things until they make sense.</p>
+  <input type="search" id="search" placeholder="🔍 Search tools… (e.g. trig, fractions, 6th grade)" autocomplete="off">
 
   <!-- To add a tool: create a folder with an index.html, then add a card to the right level. -->
 
@@ -53,6 +58,29 @@
       </a>
     </div>
   </section>
+  <p id="noResults">No tools match that search.</p>
 </main>
+<script>
+// Filter cards by their text (title, description, tags) plus the section's level
+// heading, so "6th grade" or "high school" also work. Every word must match.
+const search = document.getElementById('search');
+search.addEventListener('input', () => {
+  const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+  let anyVisible = false;
+  document.querySelectorAll('section').forEach(section => {
+    const levelText = section.querySelector('.level').textContent.toLowerCase();
+    let sectionVisible = false;
+    section.querySelectorAll('.card').forEach(card => {
+      const text = levelText + ' ' + card.textContent.toLowerCase();
+      const match = words.every(w => text.includes(w));
+      card.style.display = match ? '' : 'none';
+      sectionVisible = sectionVisible || match;
+    });
+    section.style.display = sectionVisible ? '' : 'none';
+    anyVisible = anyVisible || sectionVisible;
+  });
+  document.getElementById('noResults').style.display = anyVisible ? 'none' : 'block';
+});
+</script>
 </body>
 </html>
