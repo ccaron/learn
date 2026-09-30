@@ -5,8 +5,14 @@
 <title>Sine Language: A Dad's Guide to the Unit Circle</title>
 <style>
   html, body { height: 100%; margin: 0; }
-  body { font-family: -apple-system, sans-serif; padding: 20px; box-sizing: border-box; background: #0f1420; color: #eee; overflow: hidden; display: flex; flex-direction: column; }
-  h1 { text-align: center; font-size: 1.6em; margin: 0 0 14px; flex: 0 0 auto; }
+  body { font-family: -apple-system, sans-serif; padding: 14px 20px 20px; box-sizing: border-box; background: #0f1420; color: #eee; overflow: hidden; display: flex; flex-direction: column; }
+  .topnav { display: flex; align-items: center; gap: 18px; margin-bottom: 6px; font-size: 0.95em; flex: 0 0 auto; }
+  .topnav a { color: #9ab; text-decoration: none; padding: 4px 2px; border-bottom: 2px solid transparent; }
+  .topnav a:hover { color: #eee; }
+  .topnav a.active { color: #eee; border-bottom-color: #6cf; }
+  .topnav a.home { color: #78839c; margin-right: 10px; }
+  .topnav .soon { color: #4d566e; }
+  h1 { text-align: center; font-size: 1.5em; margin: 0 0 12px; flex: 0 0 auto; }
   .wrap { display: flex; gap: 16px; max-width: 1400px; width: 100%; margin: 0 auto; flex: 1 1 auto; min-height: 0; flex-wrap: nowrap; justify-content: center; align-items: stretch; }
   .panel { background: #1a2032; border-radius: 12px; padding: 16px; flex-shrink: 0; box-sizing: border-box; }
   .circle-panel { display: flex; flex-direction: column; align-items: stretch; justify-content: center; }
@@ -45,7 +51,12 @@
 </style>
 </head>
 <body>
-<a href="../" style="position:absolute; top:22px; left:24px; color:#78839c; text-decoration:none; font-size:0.95em;">← All tools</a>
+<nav class="topnav">
+  <a class="home" href="../">← All tools</a>
+  <a href="../unit-circle/">Unit Circle</a>
+  <a class="active" href="../trig-explorer/">Trig Graphs</a>
+  <span class="soon">Modeling (soon)</span>
+</nav>
 <h1>Sine Language: A Dad's Guide to the Unit Circle</h1>
 <div class="wrap">
   <div class="panel circle-panel">
@@ -66,7 +77,9 @@
         <button class="toggle" id="btnFn_sec">sec<small>= 1/cos</small></button>
       </div>
       <div class="fn-pair">
-        <button class="toggle" id="btnFn_tan" style="flex:1;">tan<small>= sin/cos</small></button>
+        <button class="toggle" id="btnFn_tan">tan<small>= sin/cos</small></button>
+        <span class="recip">↕ 1/x</span>
+        <button class="toggle" id="btnFn_cot">cot<small>= 1/tan</small></button>
       </div>
     </div>
     <button class="toggle" id="btnReset" style="width:100%; margin-bottom:10px; flex: 0 0 auto;">↺ Reset values</button>
@@ -95,7 +108,7 @@
       <button class="chip" data-layer="midline">midline</button>
       <button class="chip" data-layer="ref1">±1 lines</button>
       <button class="chip" data-layer="asymptotes">asymptotes</button>
-      <button class="chip" data-layer="helper">sin/cos helper</button>
+      <button class="chip" data-layer="helper">helper curve</button>
     </div>
     <div class="eq" id="eqLine">y = 1.0 · sin(1.0·x + 0°) + 0.0</div>
     <div class="row" style="margin-top:12px; text-align:center;">
@@ -120,21 +133,24 @@ let currentFn = 'sin';
 const layers = { ghost: true, keyPoints: true, maxMin: false, midline: true, ref1: false, asymptotes: true, helper: true };
 let playing = false, playT = 0;
 
-const FNS = ['sin', 'cos', 'tan', 'csc', 'sec'];
-const UNBOUNDED = new Set(['tan', 'csc', 'sec']);
-// csc and sec are graphed from their reciprocal partner.
-const PARTNER = { csc: 'sin', sec: 'cos' };
+const FNS = ['sin', 'cos', 'tan', 'csc', 'sec', 'cot'];
+const UNBOUNDED = new Set(['tan', 'csc', 'sec', 'cot']);
+// tan and cot repeat every π instead of every 2π.
+const PI_PERIOD = new Set(['tan', 'cot']);
+// Reciprocals are graphed from their partner.
+const PARTNER = { csc: 'sin', sec: 'cos', cot: 'tan' };
 // Asymptotes sit where the inner angle equals offset + kπ.
-const ASYMPTOTE_OFFSET = { tan: Math.PI/2, sec: Math.PI/2, csc: 0 };
+const ASYMPTOTE_OFFSET = { tan: Math.PI/2, sec: Math.PI/2, csc: 0, cot: 0 };
 
-// Reciprocal pairs share a color family: sin/csc warm, cos/sec cool.
-const FN_COLOR = { sin: '#ff6b6b', cos: '#c792ea', tan: '#8bd17c', csc: '#ffa94d', sec: '#7aa2ff' };
+// Reciprocal pairs share a color family: sin/csc warm, cos/sec cool, tan/cot green.
+const FN_COLOR = { sin: '#ff6b6b', cos: '#c792ea', tan: '#8bd17c', csc: '#ffa94d', sec: '#7aa2ff', cot: '#c3e88d' };
 const FN_BLURB = {
   sin: 'sin(x) is the height (y-coordinate) of the point on the circle at angle x.',
   cos: 'cos(x) is the horizontal position (x-coordinate) of the point on the circle at angle x.',
   tan: 'tan(x) = sin(x)/cos(x) — the slope of the line from the center through that point.',
   csc: 'csc(x) = 1/sin(x). Where sin is 0, csc blows up (asymptote). Where sin is ±1, csc is ±1 too.',
   sec: 'sec(x) = 1/cos(x). Where cos is 0, sec blows up (asymptote). Where cos is ±1, sec is ±1 too.',
+  cot: 'cot(x) = 1/tan(x) = cos(x)/sin(x). Where sin is 0, cot blows up (asymptote); where tan blows up, cot is 0.',
 };
 
 // Inner angles of the parent function's key points (one cycle).
@@ -144,6 +160,7 @@ const KEY_INNERS = {
   tan: [-Math.PI/4, 0, Math.PI/4],
   csc: [Math.PI/2, 3*Math.PI/2],
   sec: [0, Math.PI],
+  cot: [Math.PI/4, Math.PI/2, 3*Math.PI/4],
 };
 
 function withAlpha(hex, alpha) {
@@ -190,7 +207,7 @@ layerChips.forEach(chip => {
 function updateLayerBar() {
   const applies = {
     maxMin: !UNBOUNDED.has(currentFn),
-    ref1: currentFn !== 'tan',
+    ref1: !PI_PERIOD.has(currentFn),
     asymptotes: UNBOUNDED.has(currentFn),
     helper: !!PARTNER[currentFn],
   };
@@ -399,7 +416,7 @@ function draw() {
     ? fracPiLabelUnwrapped(Math.round(parseFloat(angleSlider.value))) + ' rad'
     : parseFloat(angleSlider.value).toFixed(0) + '°';
 
-  const baseCycle = currentFn === 'tan' ? Math.PI : 2*Math.PI;
+  const baseCycle = PI_PERIOD.has(currentFn) ? Math.PI : 2*Math.PI;
   const period = useRadians ? (baseCycle / Math.abs(B)) : (baseCycle * 180/Math.PI / Math.abs(B));
   if (B === 0) {
     $('periodVal').textContent = '∞';
@@ -451,6 +468,7 @@ function baseValue(kind, u) {
     case 'tan': return Math.tan(u);
     case 'csc': return 1 / Math.sin(u);
     case 'sec': return 1 / Math.cos(u);
+    case 'cot': return Math.cos(u) / Math.sin(u);
   }
 }
 
@@ -506,7 +524,7 @@ function drawCircle(theta) {
   const w = 240, h = 240;
   const ctx = setupCanvas(c, w, h);
   ctx.clearRect(0, 0, w, h);
-  // Smaller circle for tan/csc/sec so the segments that reach past ±1 stay visible.
+  // Smaller circle for tan/csc/sec/cot so the segments that reach past ±1 stay visible.
   const cx = w/2, cy = h/2, r = UNBOUNDED.has(currentFn) ? 55 : 100;
 
   ctx.lineWidth = 1.5;
@@ -538,6 +556,19 @@ function drawCircle(theta) {
     ctx.beginPath(); ctx.moveTo(cx + r, cy - 3*r); ctx.lineTo(cx + r, cy + 3*r); ctx.stroke();
     ctx.strokeStyle = FN_COLOR[currentFn]; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+  } else if (currentFn === 'cot') {
+    // cot: extend the radius until it hits the horizontal line y = 1; that x is cot.
+    const v = Math.max(-3, Math.min(3, baseValue('cot', theta)));
+    const tx = cx + v * r, ty = cy - r;
+    ctx.strokeStyle = withAlpha(FN_COLOR.cot, 0.5); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 3*r, ty); ctx.lineTo(cx + 3*r, ty); ctx.stroke();
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.strokeStyle = FN_COLOR.cot; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx, ty); ctx.lineTo(tx, ty); ctx.stroke();
+    ctx.fillStyle = FN_COLOR.cot;
+    ctx.beginPath(); ctx.arc(tx, ty, 4, 0, 2*Math.PI); ctx.fill();
   } else {
     // csc/sec: the tangent line at the point crosses the y-axis at csc and the x-axis at sec.
     const tdx = -Math.sin(theta), tdy = -Math.cos(theta); // tangent direction, screen coords
@@ -574,6 +605,7 @@ function drawCircle(theta) {
     tan: `tan = ${f2(s)} / ${f2(co)} = ${f2(s / co)}`,
     csc: `csc = 1 / ${f2(s)} = ${f2(1 / s)}`,
     sec: `sec = 1 / ${f2(co)} = ${f2(1 / co)}`,
+    cot: `cot = ${f2(co)} / ${f2(s)} = ${f2(co / s)}`,
   }[currentFn];
   ctx.font = '12px -apple-system, sans-serif';
   ctx.fillStyle = FN_COLOR[currentFn];
@@ -645,14 +677,14 @@ function drawWave(A, B, C_domain, D, currentTheta) {
   ctx.font = tickFont; ctx.fillStyle = '#78839c';
   for (let v = Math.ceil(yRange.lo / yStep) * yStep; v <= yRange.hi + 1e-9; v += yStep) {
     if (Math.abs(v) < 1e-9) continue;
-    if (currentFn !== 'tan' && Math.abs(Math.abs(v) - 1) < 1e-9) continue; // drawn as ±1 reference below
+    if (!PI_PERIOD.has(currentFn) && Math.abs(Math.abs(v) - 1) < 1e-9) continue; // drawn as ±1 reference below
     const y = midY - v * scaleY;
     ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(w, y); ctx.stroke();
     ctx.fillText(v.toFixed(yStep < 1 ? 1 : 0), 34, y - 3);
   }
   ctx.setLineDash([]);
 
-  if (layers.ref1 && currentFn !== 'tan') {
+  if (layers.ref1 && !PI_PERIOD.has(currentFn)) {
     const oneY = midY - 1*scaleY, negOneY = midY + 1*scaleY;
     ctx.strokeStyle = '#3a4258'; ctx.setLineDash([2,4]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(30, oneY); ctx.lineTo(w, oneY); ctx.stroke();
@@ -802,7 +834,7 @@ function drawAnnotation(ctx, kind, A, B, C_domain, D, w, h, midY, scaleY, domXMa
   ctx.textAlign = 'left';
 
   if (kind === 'amp' || kind === 'vshift') {
-    if (currentFn === 'tan') return;
+    if (PI_PERIOD.has(currentFn)) return;
     let ax;
     if (B === 0) {
       ax = xToPixel(domXMax * 0.15);
@@ -832,7 +864,7 @@ function drawAnnotation(ctx, kind, A, B, C_domain, D, w, h, midY, scaleY, domXMa
     }
   } else if (kind === 'bfreq') {
     if (B === 0) return;
-    const baseCycle = currentFn === 'tan' ? Math.PI : 2*Math.PI;
+    const baseCycle = PI_PERIOD.has(currentFn) ? Math.PI : 2*Math.PI;
     const periodDomain = useRadians ? (baseCycle / Math.abs(B)) : (baseCycle * 180/Math.PI / Math.abs(B));
     // A cycle starts at x = C; shift by whole periods so it lands near the origin.
     const cycleStart = C_domain - periodDomain * Math.floor(C_domain / periodDomain);
