@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Modeling with Sine and Cosine</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { font-family: -apple-system, sans-serif; background: #0f1420; color: #eee; display: flex; flex-direction: column; padding: 14px 20px 20px; box-sizing: border-box; overflow: hidden; }
+  .topnav { display: flex; align-items: center; gap: 18px; margin-bottom: 12px; font-size: 0.95em; flex: 0 0 auto; }
+  .topnav a { color: #9ab; text-decoration: none; padding: 4px 2px; border-bottom: 2px solid transparent; }
+  .topnav a:hover { color: #eee; }
+  .topnav a.active { color: #eee; border-bottom-color: #6cf; }
+  .topnav a.home { color: #78839c; margin-right: 10px; }
+  .bar { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; flex: 0 0 auto; flex-wrap: wrap; }
+  .bar h1 { font-size: 1.4em; margin: 0 12px 0 0; }
+  .seg { display: inline-flex; border: 1px solid #444; border-radius: 8px; overflow: hidden; }
+  .seg button { padding: 8px 16px; font-size: 1em; background: #222a3f; color: #eee; border: none; border-right: 1px solid #444; cursor: pointer; }
+  .seg button:last-child { border-right: none; }
+  .seg button.active { background: #3468c0; }
+  .main { display: flex; gap: 16px; flex: 1 1 auto; min-height: 0; }
+  .stage { flex: 1 1 0; min-width: 0; background: #1a2032; border-radius: 12px; padding: 10px; box-sizing: border-box; }
+  .side { flex: 0 0 430px; background: #1a2032; border-radius: 12px; padding: 18px; box-sizing: border-box; overflow-y: auto; }
+  canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  .muted { color: #9ab; }
+  .small { font-size: 0.85em; }
+  .fields { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; margin-bottom: 14px; }
+  .fields label { color: #9ab; }
+  select, input { background: #10151f; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 6px; font-size: 1em; }
+  .fields input { width: 110px; }
+  ol.work { padding-left: 22px; line-height: 1.6; margin: 8px 0 14px; }
+  .model { font-size: 1.35em; background: #222a3f; border-left: 3px solid #6cf; padding: 10px 12px; border-radius: 6px; margin-bottom: 14px; }
+  table.cheat { border-collapse: collapse; width: 100%; font-size: 0.95em; margin-top: 6px; }
+  table.cheat td { padding: 4px 8px; border-bottom: 1px solid #262e44; }
+  table.cheat td:last-child { font-weight: 600; color: #9ecbff; }
+  .error { color: #ff8a8a; margin-bottom: 10px; }
+  button.mini { padding: 6px 12px; font-size: 0.95em; border-radius: 6px; border: 1px solid #444; background: #222a3f; color: #eee; cursor: pointer; }
+  button.mini:hover { border-color: #6cf; }
+  button.primary { background: #3468c0; border-color: #6cf; }
+  .problem-text { background: #222a3f; padding: 12px; border-radius: 8px; line-height: 1.5; margin: 10px 0 14px; }
+  .problem-text h3 { margin: 0 0 6px; font-size: 1.1em; }
+  .step { border: 1px solid #2f3850; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .step.done { border-color: #2e6b45; }
+  .step.future { opacity: 0.4; }
+  .step .q { font-weight: 600; margin-bottom: 6px; }
+  .step .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .step input { width: 120px; }
+  .step .explain { color: #cfd6e6; margin-top: 6px; line-height: 1.5; font-size: 0.95em; }
+  .step .hint { color: #ffd166; margin-top: 6px; font-size: 0.95em; }
+  .step .bad { color: #ff8a8a; margin-top: 6px; }
+  .opts { display: grid; gap: 6px; }
+  button.opt { padding: 9px 10px; font-size: 1.02em; background: #222a3f; color: #eee; border: 1px solid #444; border-radius: 8px; cursor: pointer; text-align: left; }
+  button.opt:hover { border-color: #6cf; }
+  button.opt.wrong { background: #6b2430; border-color: #ff6b6b; }
+  .score { color: #9ab; margin-bottom: 4px; }
+  .done-banner { background: #1f5f3a; padding: 10px 12px; border-radius: 8px; margin: 10px 0; }
+  @media (max-width: 820px) {
+    body { overflow: auto; height: auto; }
+    .main { flex-direction: column; }
+    .stage { flex: none; height: 60vh; }
+    .side { flex: none; }
+  }
+</style>
+</head>
+<body>
+<nav class="topnav">
+  <a class="home" href="../">← All tools</a>
+  <a href="../unit-circle/">Unit Circle</a>
+  <a href="../trig-explorer/">Trig Graphs</a>
+  <a class="active" href="../modeling/">Modeling</a>
+</nav>
+<div class="bar">
+  <h1>Modeling with Sine &amp; Cosine</h1>
+  <div class="seg" id="modeSeg">
+    <button data-mode="build" class="active">Build a model</button>
+    <button data-mode="problems">📝 Word problems</button>
+  </div>
+</div>
+<div class="main">
+  <div class="stage" id="stage"><canvas id="canvas"></canvas></div>
+  <div class="side">
+    <div id="panelBuild">
+      <div class="fields">
+        <label for="preset">Scenario</label>
+        <select id="preset">
+          <option value="ferris">🎡 Ferris wheel</option>
+          <option value="tides">🌊 Tides</option>
+          <option value="temperature">🌡️ Temperature</option>
+          <option value="daylight">☀️ Daylight hours</option>
+          <option value="buoy">🛟 Bobbing buoy</option>
+          <option value="custom">Custom</option>
+        </select>
+        <label for="bMax">Maximum</label><input id="bMax" type="number" step="any">
+        <label for="bMin">Minimum</label><input id="bMin" type="number" step="any">
+        <label for="bPer">Period</label><input id="bPer" type="number" step="any">
+        <label for="bShape">Starts at</label>
+        <select id="bShape">
+          <option value="max">its maximum</option>
+          <option value="min">its minimum</option>
+          <option value="up">the midline, going up</option>
+          <option value="down">the midline, going down</option>
+        </select>
+        <label for="bH">… at t =</label><input id="bH" type="number" step="any">
+      </div>
+      <div id="buildOut"></div>
+      <div class="muted small" style="margin-top:12px;">Pick the shape by where the graph <b>starts</b>:</div>
+      <table class="cheat">
+        <tr><td>starts at the maximum</td><td>cos</td></tr>
+        <tr><td>starts at the minimum</td><td>−cos</td></tr>
+        <tr><td>starts on the midline, going up</td><td>sin</td></tr>
+        <tr><td>starts on the midline, going down</td><td>−sin</td></tr>
+      </table>
+      <div class="muted small" style="margin-top:10px;">If it starts at t = h instead of 0, shift right: replace t with (t − h). Hover over the graph to read values.</div>
+    </div>
+
+    <div id="panelProblems" style="display:none;">
+      <div class="row" style="display:flex; gap:8px; align-items:center;">
+        <select id="pType">
+          <option value="random">Any scenario</option>
+          <option value="ferris">🎡 Ferris wheel</option>
+          <option value="tides">🌊 Tides</option>
+          <option value="temperature">🌡️ Temperature</option>
+          <option value="daylight">☀️ Daylight hours</option>
+          <option value="buoy">🛟 Bobbing buoy</option>
+        </select>
+        <button class="mini primary" id="btnNewProblem">New problem</button>
+      </div>
+      <div id="problemBody"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const MINUS = '−';
+let mode = 'build';
+
+// ---------- Numbers and formatting ----------
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; }
+const fmtN = x => { const v = +x.toFixed(3) || 0; return v < 0 ? MINUS + (-v) : String(v); };
+// B = 2π/T, written as a simplified multiple of π when T is a whole number.
+function bLabel(T) {
+  if (!Number.isInteger(T)) return `2π/${fmtN(T)}`;
+  const g = gcd(2, T), num = 2 / g, den = T / g;
+  return `${num === 1 ? '' : num}π${den === 1 ? '' : '/' + den}`;
+}
+const pick = a => a[Math.floor(Math.random() * a.length)];
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
+// Accept answers like "30", "0.5236", "π/6", "2pi/12", "2*π/12". Only digits, operators and π allowed.
+function parseAnswer(str) {
+  const s = str.trim().toLowerCase().replace(/−/g, '-').replace(/×/g, '*');
+  if (!s || !/^[0-9+\-*/().\s]*$/.test(s.replace(/pi|π/g, ''))) return NaN;
+  const js = s.replace(/(\d|\))\s*(pi|π)/g, '$1*$2').replace(/pi|π/g, '(Math.PI)');
+  try { const v = Function(`"use strict"; return (${js});`)(); return typeof v === 'number' ? v : NaN; }
+  catch (e) { return NaN; }
+}
+const closeEnough = (v, ans) => Math.abs(v - ans) <= Math.max(0.01, 0.01 * Math.abs(ans));
+
+// ---------- Model: y = sign·A·fn(B(t − h)) + D, with B = 2π/T ----------
+const SHAPES = {
+  max: { fn: 'cos', sign: 1, offset: 0, text: 'its maximum', form: 'cos' },
+  min: { fn: 'cos', sign: -1, offset: 0.5, text: 'its minimum', form: '−cos' },
+  up: { fn: 'sin', sign: 1, offset: 0.25, text: 'the midline, going up', form: 'sin' },
+  down: { fn: 'sin', sign: -1, offset: 0.75, text: 'the midline, going down', form: '−sin' },
+};
+const Bnum = m => m.Bnum ?? 2 * Math.PI / m.T;
+const evalModel = (m, t) => m.sign * m.A * Math[m.fn](Bnum(m) * (t - m.h)) + m.D;
+
+function eqString(m, yName = 'y') {
+  const b = m.bText ?? bLabel(m.T);
+  const bT = /[/]/.test(b) ? `(${b})` : b;
+  const inner = m.h === 0 ? `${bT}t` : `${bT}(t ${m.h > 0 ? '−' : '+'} ${fmtN(Math.abs(m.h))})`;
+  const amp = fmtN(m.A) === '1' ? '' : fmtN(m.A) + ' ';
+  const d = m.D === 0 ? '' : m.D > 0 ? ` + ${fmtN(m.D)}` : ` − ${fmtN(-m.D)}`;
+  return `${yName} = ${m.sign < 0 ? MINUS : ''}${amp}${m.fn}(${inner})${d}`;
+}
+function sameCurve(m1, m2, [t0, t1]) {
+  for (let i = 0; i <= 200; i++) {
+    const t = t0 + (t1 - t0) * i / 200;
+    if (Math.abs(evalModel(m1, t) - evalModel(m2, t)) > 1e-6) return false;
+  }
+  return true;
+}
+// Time of the first maximum at or after t0.
+function firstMax(m, t0) {
+  const shape = Object.values(SHAPES).find(s => s.fn === m.fn && s.sign === m.sign);
+  let t = m.h + shape.offset * m.T;
+  t -= Math.floor((t - t0) / m.T) * m.T;
+  return t;
+}
+
+// ---------- Scenarios ----------
+const PRESETS = {
+  ferris: { max: 55, min: 5, T: 30, shape: 'min', h: 0, yName: 'h', yLabel: 'height (ft)', tLabel: 'time (seconds)' },
+  tides: { max: 11, min: 2, T: 12, shape: 'max', h: 3, yName: 'd', yLabel: 'water depth (ft)', tLabel: 'hours after midnight' },
+  temperature: { max: 88, min: 30, T: 12, shape: 'max', h: 7, yName: 'y', yLabel: 'avg temperature (°F)', tLabel: 'month' },
+  daylight: { max: 15, min: 9, T: 365, shape: 'max', h: 172, yName: 'L', yLabel: 'hours of daylight', tLabel: 'day of the year' },
+  buoy: { max: 9, min: 3, T: 6, shape: 'up', h: 0, yName: 'b', yLabel: 'height (ft)', tLabel: 'time (seconds)' },
+  custom: { yName: 'y', yLabel: 'y', tLabel: 't' },
+};
+
+const TEMPLATES = {
+  ferris() {
+    const d = pick([40, 50, 60, 80, 100, 120]), L = pick([3, 4, 5, 6, 8, 10]), T = pick([20, 30, 40, 60]);
+    const t0 = pick([T / 6, T / 4, T / 3, 2 * T / 3, 5 * T / 6].filter(Number.isInteger));
+    return {
+      title: '🎡 Ferris wheel', yName: 'h', yLabel: 'height (ft)', tLabel: 'time (seconds)', tUnit: 'seconds',
+      text: `A Ferris wheel is ${d} ft in diameter, and its lowest point is ${L} ft above the ground. It makes one full turn every ${T} seconds. You get on at the bottom at t = 0. Model your height h(t), in feet, after t seconds.`,
+      max: L + d, min: L, model: { A: d / 2, D: L + d / 2, T, h: 0, fn: 'cos', sign: -1 }, t0, tRange: [0, 2 * T],
+      facts: [{ t: 0, y: L, label: 'get on (bottom)' }, { t: T / 2, y: L + d, label: 'top' }],
+      maxMinText: `The lowest point is ${L} ft and the top is ${L} + ${d} = ${L + d} ft.`,
+      periodText: `One full turn takes ${T} seconds, so the period is ${T}.`,
+      startText: 'At t = 0 you are at the bottom (the minimum), so use −cos with no shift.',
+    };
+  },
+  tides() {
+    const H = pick([8, 9, 10, 11, 12, 13.5]), Lw = pick([1, 1.5, 2, 3, 4]), t1 = pick([1, 2, 3, 4, 5]);
+    return {
+      title: '🌊 Tides', yName: 'd', yLabel: 'water depth (ft)', tLabel: 'hours after midnight', tUnit: 'hours',
+      text: `At a harbor, high tide (${fmtN(H)} ft deep) happens at ${t1}:00 AM. The next low tide (${fmtN(Lw)} ft) is 6 hours later, at ${t1 + 6}:00 AM. Let t be the number of hours after midnight. Model the water depth d(t) in feet.`,
+      max: H, min: Lw, model: { A: (H - Lw) / 2, D: (H + Lw) / 2, T: 12, h: t1, fn: 'cos', sign: 1 },
+      t0: pick([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14].filter(t => (t - t1) % 3 !== 0)), tRange: [0, 24],
+      facts: [{ t: t1, y: H, label: 'high tide' }, { t: t1 + 6, y: Lw, label: 'low tide' }],
+      maxMinText: `High tide is ${fmtN(H)} ft and low tide is ${fmtN(Lw)} ft.`,
+      periodText: 'High tide to low tide is half a cycle (6 hours), so a full cycle is 2 × 6 = 12 hours.',
+      startText: `The maximum (high tide) is at t = ${t1}, so use cos shifted right by ${t1}.`,
+    };
+  },
+  temperature() {
+    const hi = pick([78, 82, 85, 88, 92]), lo = pick([22, 26, 30, 34, 40]);
+    return {
+      title: '🌡️ Temperature', yName: 'y', yLabel: 'avg temperature (°F)', tLabel: 'month', tUnit: 'months',
+      text: `In one city, the average temperature peaks at ${hi}°F in July (t = 7) and is lowest, ${lo}°F, in January (t = 1). Let t be the month number. Model the average temperature y(t) in °F.`,
+      max: hi, min: lo, model: { A: (hi - lo) / 2, D: (hi + lo) / 2, T: 12, h: 7, fn: 'cos', sign: 1 },
+      t0: pick([2, 3, 5, 9, 11]), tRange: [0, 24],
+      facts: [{ t: 1, y: lo, label: 'January' }, { t: 7, y: hi, label: 'July' }],
+      maxMinText: `The highest average is ${hi}°F and the lowest is ${lo}°F.`,
+      periodText: 'January to July is half a cycle (6 months), so the period is 12 months: one year.',
+      startText: 'The maximum is at t = 7 (July), so use cos shifted right by 7.',
+    };
+  },
+  daylight() {
+    const mx = pick([14.5, 15, 15.5]), mn = pick([8.5, 9, 9.5]);
+    return {
+      title: '☀️ Daylight hours', yName: 'L', yLabel: 'hours of daylight', tLabel: 'day of the year', tUnit: 'days',
+      text: `In one city, the longest day of the year is June 21 (day t = 172), with ${fmtN(mx)} hours of daylight. The shortest day has ${fmtN(mn)} hours. The pattern repeats every 365 days. Model the hours of daylight L(t) on day t.`,
+      max: mx, min: mn, model: { A: (mx - mn) / 2, D: (mx + mn) / 2, T: 365, h: 172, fn: 'cos', sign: 1 },
+      t0: pick([32, 60, 100, 250, 300]), tRange: [0, 365],
+      facts: [{ t: 172, y: mx, label: 'June 21 (longest)' }],
+      maxMinText: `The longest day has ${fmtN(mx)} hours and the shortest has ${fmtN(mn)} hours.`,
+      periodText: 'The pattern repeats every 365 days, so the period is 365.',
+      startText: 'The maximum is at t = 172, so use cos shifted right by 172.',
+    };
+  },
+  buoy() {
+    const low = pick([2, 3, 4, 5]), high = low + pick([4, 5, 6, 8]), T = pick([4, 5, 6, 8, 10]);
+    // Half-second steps, skipping quarter-period points (those land exactly on max/min/midline).
+    const t0 = pick(Array.from({ length: 2 * T - 1 }, (_, k) => (k + 1) / 2).filter(t => (4 * t) % T !== 0));
+    return {
+      title: '🛟 Bobbing buoy', yName: 'b', yLabel: 'height (ft)', tLabel: 'time (seconds)', tUnit: 'seconds',
+      text: `A buoy bobs up and down with the waves, between ${low} ft and ${high} ft above the sea floor. One full bob takes ${T} seconds. At t = 0 it is at its middle height and moving up. Model its height b(t) in feet.`,
+      max: high, min: low, model: { A: (high - low) / 2, D: (high + low) / 2, T, h: 0, fn: 'sin', sign: 1 },
+      t0, tRange: [0, 2 * T], facts: [],
+      maxMinText: `It moves between ${low} ft and ${high} ft.`,
+      periodText: `One full bob takes ${T} seconds, so the period is ${T}.`,
+      startText: 'At t = 0 it is on the midline going up, so use sin with no shift.',
+    };
+  },
+};
+
+function equationOptions(p) {
+  const m = p.model, other = m.fn === 'cos' ? 'sin' : 'cos';
+  const variants = shuffle([
+    { ...m, sign: -m.sign },
+    { ...m, Bnum: m.T, bText: fmtN(m.T) },       // mistake: period used as B
+    { ...m, D: p.min },                          // mistake: min used as midline
+    { ...m, A: p.max - p.min },                  // mistake: full range used as amplitude
+    m.h !== 0 ? { ...m, h: -m.h } : { ...m, fn: other },
+    { ...m, fn: other },
+  ]);
+  const correct = eqString(m, p.yName), out = [correct];
+  for (const v of variants) {
+    const s = eqString(v, p.yName);
+    if (out.length < 4 && !out.includes(s) && !sameCurve(v, m, p.tRange)) out.push(s);
+  }
+  return { options: shuffle(out), answer: correct };
+}
+
+function makeSteps(p) {
+  const m = p.model, B = Bnum(m), val = evalModel(m, p.t0);
+  const shift = m.h === 0 ? `${p.t0}` : `${p.t0} − ${fmtN(m.h)}`;
+  const { options, answer } = equationOptions(p);
+  return [
+    { prompt: 'What is the midline D?', type: 'num', answer: m.D, reveal: 'midline',
+      hint: 'The midline is halfway between the maximum and the minimum.',
+      explain: `${p.maxMinText} D = (max + min)/2 = (${fmtN(p.max)} + ${fmtN(p.min)})/2 = <b>${fmtN(m.D)}</b>.` },
+    { prompt: 'What is the amplitude |A|?', type: 'num', answer: m.A, reveal: 'band',
+      hint: 'The amplitude is half the distance between the max and the min.',
+      explain: `|A| = (max − min)/2 = (${fmtN(p.max)} − ${fmtN(p.min)})/2 = <b>${fmtN(m.A)}</b>.` },
+    { prompt: `What is the period (in ${p.tUnit})?`, type: 'num', answer: m.T, reveal: 'period',
+      hint: 'The period is the time for one full cycle, for example from one max to the next.',
+      explain: `${p.periodText}` },
+    { prompt: 'What is B?', type: 'num', answer: B, reveal: null,
+      hint: 'B = 2π / period. You can type π, like 2π/12 or pi/6.',
+      explain: `B = 2π/period = 2π/${fmtN(m.T)} = <b>${bLabel(m.T)}</b> ≈ ${B.toFixed(4)}.` },
+    { prompt: 'Which equation models this situation?', type: 'mc', options, answer, reveal: 'curve',
+      hint: 'Where does the graph start? max → cos, min → −cos, midline going up → sin, midline going down → −sin. A start at t = h means (t − h).',
+      explain: `${p.startText} So <b>${answer}</b>.` },
+    { prompt: `Use your model: what is ${p.yName}(${p.t0})?`, type: 'num', answer: val, reveal: 'point',
+      hint: 'Substitute t into your equation. Make sure your calculator is in RADIAN mode!',
+      explain: `${p.yName}(${p.t0}) = ${m.sign < 0 ? MINUS : ''}${fmtN(m.A)}·${m.fn}(${bLabel(m.T)} · (${shift})) + ${fmtN(m.D)} ≈ <b>${val.toFixed(2)}</b>.` },
+  ];
+}
+
+// ---------- Graph ----------
+const canvas = $('canvas'), stageEl = $('stage');
+let hoverT = null, lastXform = null;
+
+function niceStep(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const k of [1, 2, 5, 10]) if (k * p >= v - 1e-9) return k * p;
+}
+
+// o: { model, max, min, tRange, yLabel, tLabel, yName, facts, show: Set, point }
+function drawGraph(o) {
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(300, rect.width), h = Math.max(220, rect.height), dpr = window.devicePixelRatio || 1;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const f = Math.max(12, Math.min(16, h / 32));
+  const font = s => `${Math.round(s)}px -apple-system, sans-serif`;
+
+  const m = o.model, [t0, t1] = o.tRange, span = Math.max(o.max - o.min, 1e-6);
+  let lo = o.min - 0.35 * span, hi = o.max + 0.35 * span;
+  if (o.min >= 0 && lo < 0) lo = 0;
+  const L = 70, R = 24, T = 20, Bm = 56;
+  const X = t => L + (t - t0) / (t1 - t0) * (w - L - R);
+  const Y = y => T + (hi - y) / (hi - lo) * (h - T - Bm);
+  lastXform = { L, R, w, t0, t1 };
+
+  // grid, ticks and axis titles
+  ctx.lineWidth = 1; ctx.font = font(f * 0.85); ctx.fillStyle = '#78839c';
+  const yStep = niceStep((hi - lo) / 8), tStep = niceStep((t1 - t0) / 12);
+  ctx.textAlign = 'right';
+  for (let y = Math.ceil(lo / yStep) * yStep; y <= hi + 1e-9; y += yStep) {
+    ctx.strokeStyle = '#232b3f'; ctx.beginPath(); ctx.moveTo(L, Y(y)); ctx.lineTo(w - R, Y(y)); ctx.stroke();
+    ctx.fillText(fmtN(y), L - 8, Y(y) + f * 0.3);
+  }
+  ctx.textAlign = 'center';
+  for (let t = Math.ceil(t0 / tStep) * tStep; t <= t1 + 1e-9; t += tStep) {
+    ctx.strokeStyle = '#232b3f'; ctx.beginPath(); ctx.moveTo(X(t), T); ctx.lineTo(X(t), h - Bm); ctx.stroke();
+    ctx.fillText(fmtN(t), X(t), h - Bm + f * 1.2);
+  }
+  ctx.strokeStyle = '#4d566e';
+  ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, h - Bm); ctx.lineTo(w - R, h - Bm); ctx.stroke();
+  ctx.fillStyle = '#9ab'; ctx.font = font(f);
+  ctx.fillText(o.tLabel, (L + w - R) / 2, h - 12);
+  ctx.save(); ctx.translate(16, (T + h - Bm) / 2); ctx.rotate(-Math.PI / 2); ctx.fillText(o.yLabel, 0, 0); ctx.restore();
+
+  const hline = (y, color, dash, label) => {
+    ctx.strokeStyle = color; ctx.setLineDash(dash); ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(L, Y(y)); ctx.lineTo(w - R, Y(y)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = color; ctx.textAlign = 'right'; ctx.font = font(f * 0.9);
+    ctx.fillText(label, w - R - 6, Y(y) - 6);
+  };
+  const arrow = (x1, y1, x2, y2, color) => {
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    for (const [ax, ay, bx, by] of [[x2, y2, x1, y1], [x1, y1, x2, y2]]) {
+      const a = Math.atan2(ay - by, ax - bx);
+      ctx.beginPath(); ctx.moveTo(ax, ay);
+      ctx.lineTo(ax - 8 * Math.cos(a - 0.45), ay - 8 * Math.sin(a - 0.45));
+      ctx.lineTo(ax - 8 * Math.cos(a + 0.45), ay - 8 * Math.sin(a + 0.45));
+      ctx.fill();
+    }
+  };
+
+  if (o.show.has('band')) {
+    hline(o.max, '#9ab', [4, 4], `max = ${fmtN(o.max)}`);
+    hline(o.min, '#9ab', [4, 4], `min = ${fmtN(o.min)}`);
+  }
+  if (o.show.has('midline')) hline(m.D, '#eaeaea', [9, 4], `midline D = ${fmtN(m.D)}`);
+  if (o.show.has('band')) {
+    const ax = X(t0 + 0.04 * (t1 - t0));
+    arrow(ax, Y(m.D), ax, Y(o.max), '#fff8e1');
+    ctx.fillStyle = '#fff8e1'; ctx.textAlign = 'left'; ctx.font = font(f * 0.9);
+    ctx.fillText(`|A| = ${fmtN(m.A)}`, ax + 8, (Y(m.D) + Y(o.max)) / 2);
+  }
+  if (o.show.has('period')) {
+    const pm = firstMax(m, t0), y = Y(o.max) - f * 1.2;
+    arrow(X(pm), y, X(pm + m.T), y, '#6cf');
+    ctx.fillStyle = '#6cf'; ctx.textAlign = 'center'; ctx.font = font(f * 0.9);
+    ctx.fillText(`period = ${fmtN(m.T)}`, (X(pm) + X(pm + m.T)) / 2, y - 7);
+  }
+  if (o.show.has('curve')) {
+    ctx.strokeStyle = '#ff6b6b'; ctx.lineWidth = 3; ctx.beginPath();
+    for (let px = L; px <= w - R; px++) {
+      const t = t0 + (px - L) / (w - L - R) * (t1 - t0), py = Y(evalModel(m, t));
+      px === L ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  const dot = (t, y, color, label, above = true) => {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(X(t), Y(y), 6, 0, 2 * Math.PI); ctx.fill();
+    if (!label) return;
+    ctx.font = font(f * 0.9); ctx.textAlign = 'center';
+    const tw = ctx.measureText(label).width, ly = Y(y) + (above ? -14 : 24);
+    ctx.fillStyle = 'rgba(16,21,31,0.8)'; ctx.fillRect(X(t) - tw / 2 - 4, ly - f * 0.9, tw + 8, f * 1.25);
+    ctx.fillStyle = color; ctx.fillText(label, X(t), ly);
+  };
+  for (const fact of o.facts) dot(fact.t, fact.y, '#ffd166', `${fact.label} (${fmtN(fact.t)}, ${fmtN(fact.y)})`, fact.y >= m.D);
+  if (o.point) dot(o.point.t, o.point.y, '#8fe3a8', `(${fmtN(o.point.t)}, ${o.point.y.toFixed(2)})`, true);
+
+  if (o.show.has('curve') && hoverT !== null && hoverT >= t0 && hoverT <= t1) {
+    const y = evalModel(m, hoverT);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(X(hoverT), T); ctx.lineTo(X(hoverT), h - Bm); ctx.stroke(); ctx.setLineDash([]);
+    dot(hoverT, y, '#fff', `${o.yName}(${fmtN(hoverT)}) ≈ ${y.toFixed(2)}`, true);
+  }
+  ctx.textAlign = 'left';
+}
+
+canvas.addEventListener('pointermove', e => {
+  if (!lastXform) return;
+  const { L, R, w, t0, t1 } = lastXform, x = e.clientX - canvas.getBoundingClientRect().left;
+  hoverT = x < L || x > w - R ? null : t0 + (x - L) / (w - L - R) * (t1 - t0);
+  redrawGraph();
+});
+canvas.addEventListener('pointerleave', () => { hoverT = null; redrawGraph(); });
+
+// ---------- Build mode ----------
+let build = null;
+function loadPreset(key) {
+  const p = PRESETS[key];
+  if (key !== 'custom') {
+    $('bMax').value = p.max; $('bMin').value = p.min; $('bPer').value = p.T;
+    $('bShape').value = p.shape; $('bH').value = p.h;
+  }
+  build = { yName: p.yName, yLabel: p.yLabel, tLabel: p.tLabel };
+}
+function readBuild() {
+  const max = parseFloat($('bMax').value), min = parseFloat($('bMin').value);
+  const T = parseFloat($('bPer').value), h = parseFloat($('bH').value) || 0, shape = SHAPES[$('bShape').value];
+  if (!(max > min)) return { error: 'The maximum must be bigger than the minimum.' };
+  if (!(T > 0)) return { error: 'The period must be a positive number.' };
+  const model = { A: (max - min) / 2, D: (max + min) / 2, T, h, fn: shape.fn, sign: shape.sign };
+  return { max, min, T, h, shape, model };
+}
+function renderBuild() {
+  const r = readBuild();
+  if (r.error) { $('buildOut').innerHTML = `<div class="error">${r.error}</div>`; return null; }
+  const { max, min, T, h, shape, model } = r;
+  const shiftText = h === 0 ? 'no shift' : `shifted right by ${fmtN(h)}: use (t − ${fmtN(h)})`;
+  $('buildOut').innerHTML = `
+    <ol class="work">
+      <li>Midline: D = (max + min)/2 = (${fmtN(max)} + ${fmtN(min)})/2 = <b>${fmtN(model.D)}</b></li>
+      <li>Amplitude: |A| = (max − min)/2 = (${fmtN(max)} − ${fmtN(min)})/2 = <b>${fmtN(model.A)}</b></li>
+      <li>B = 2π/period = 2π/${fmtN(T)} = <b>${bLabel(T)}</b> ≈ ${(2 * Math.PI / T).toFixed(4)}</li>
+      <li>Starts at ${shape.text} at t = ${fmtN(h)} → <b>${shape.form}</b>, ${shiftText}</li>
+    </ol>
+    <div class="model">${eqString(model, build.yName)}</div>`;
+  const facts = [{ t: h, y: evalModel(model, h), label: 'start' }];
+  return {
+    model, max, min, yName: build.yName, yLabel: build.yLabel, tLabel: build.tLabel,
+    tRange: [0, Math.max(2 * T, h + 1.25 * T)], facts,
+    show: new Set(['midline', 'band', 'period', 'curve']),
+  };
+}
+$('preset').onchange = () => { loadPreset($('preset').value); render(); };
+['bMax', 'bMin', 'bPer', 'bH'].forEach(id => $(id).addEventListener('input', () => {
+  if ($('preset').value !== 'custom') { $('preset').value = 'custom'; build = { ...build }; }
+  render();
+}));
+$('bShape').onchange = () => { $('preset').value = 'custom'; render(); };
+
+// ---------- Word problems ----------
+let prob = null;
+let tally = { problems: 0, firstTry: 0, steps: 0 };
+
+function createProblem() {
+  const type = $('pType').value === 'random' ? pick(Object.keys(TEMPLATES)) : $('pType').value;
+  const p = TEMPLATES[type]();
+  prob = { p, steps: makeSteps(p), i: 0, tries: 0, hint: false, bad: '', firstTry: 0, counted: false };
+}
+function newProblem() { createProblem(); render(); }
+
+function submitStep(value) {
+  const step = prob.steps[prob.i];
+  const ok = step.type === 'mc' ? value === step.answer : closeEnough(parseAnswer(value), step.answer);
+  if (step.type === 'num' && isNaN(parseAnswer(value))) { prob.bad = 'Type a number, like 30, 2.5, or π/6.'; render(); return; }
+  if (ok) advance(prob.tries === 0);
+  else { prob.tries++; prob.bad = step.type === 'mc' ? 'Not that one. Check the hint.' : 'Not quite. Try again or check the hint.'; prob.hint = true; prob.wrongOpt = value; render(); }
+}
+function advance(firstTry) {
+  if (firstTry) prob.firstTry++;
+  prob.i++; prob.tries = 0; prob.hint = false; prob.bad = ''; prob.wrongOpt = null;
+  if (prob.i === prob.steps.length && !prob.counted) {
+    prob.counted = true; tally.problems++; tally.firstTry += prob.firstTry; tally.steps += prob.steps.length;
+  }
+  render();
+}
+
+function renderProblems() {
+  if (!prob) createProblem();
+  const { p, steps, i } = prob;
+  const html = steps.map((s, k) => {
+    if (k < i) return `<div class="step done"><div class="q">✅ ${s.prompt}</div><div class="explain">${s.explain}</div></div>`;
+    if (k > i) return `<div class="step future"><div class="q">${s.prompt}</div></div>`;
+    const input = s.type === 'mc'
+      ? `<div class="opts">${s.options.map(o => `<button class="opt${o === prob.wrongOpt ? ' wrong' : ''}" data-o="${o}">${o}</button>`).join('')}</div>`
+      : `<div class="row"><input id="ans" autocomplete="off" placeholder="your answer"><button class="mini primary" id="btnCheck">Check</button></div>`;
+    return `<div class="step"><div class="q">${s.prompt}</div>${input}
+      <div class="row" style="margin-top:6px;">
+        ${prob.hint ? '' : '<button class="mini" id="btnHint">💡 Hint</button>'}
+        <button class="mini" id="btnShow">Show answer</button>
+      </div>
+      ${prob.bad ? `<div class="bad">${prob.bad}</div>` : ''}
+      ${prob.hint ? `<div class="hint">💡 ${s.hint}</div>` : ''}</div>`;
+  }).join('');
+  const done = i === steps.length;
+  $('problemBody').innerHTML = `
+    <div class="problem-text"><h3>${p.title}</h3>${p.text}</div>
+    ${done ? `<div class="done-banner">🎉 Done! ${prob.firstTry}/${steps.length} steps right on the first try.
+      <div class="small" style="margin-top:4px;">Session: ${tally.problems} problem${tally.problems === 1 ? '' : 's'}, ${tally.firstTry}/${tally.steps} steps first try.</div></div>` : ''}
+    ${html}`;
+  $('problemBody').querySelectorAll('button.opt').forEach(b => { b.onclick = () => submitStep(b.dataset.o); });
+  if ($('btnCheck')) {
+    $('btnCheck').onclick = () => submitStep($('ans').value);
+    $('ans').addEventListener('keydown', e => { if (e.key === 'Enter') submitStep($('ans').value); });
+    $('ans').focus();
+  }
+  if ($('btnHint')) $('btnHint').onclick = () => { prob.hint = true; render(); };
+  if ($('btnShow')) $('btnShow').onclick = () => advance(false);
+
+  const show = new Set(steps.slice(0, i).map(s => s.reveal).filter(Boolean));
+  const last = steps[steps.length - 1];
+  return {
+    model: p.model, max: p.max, min: p.min, yName: p.yName, yLabel: p.yLabel, tLabel: p.tLabel,
+    tRange: p.tRange, facts: p.facts, show,
+    point: show.has('point') ? { t: p.t0, y: last.answer } : null,
+  };
+}
+$('btnNewProblem').onclick = newProblem;
+$('pType').onchange = newProblem;
+
+// ---------- Mode + render ----------
+document.querySelectorAll('#modeSeg button').forEach(b => {
+  b.onclick = () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll('#modeSeg button').forEach(x => x.classList.toggle('active', x === b));
+    render();
+  };
+});
+
+// Hover only redraws the graph: re-rendering the problem panel would wipe a half-typed answer.
+let lastGraph = null;
+function render() {
+  $('panelBuild').style.display = mode === 'build' ? '' : 'none';
+  $('panelProblems').style.display = mode === 'problems' ? '' : 'none';
+  lastGraph = mode === 'build' ? renderBuild() : renderProblems();
+  if (lastGraph) drawGraph(lastGraph);
+}
+function redrawGraph() { if (lastGraph) drawGraph(lastGraph); }
+
+loadPreset('ferris');
+render();
+window.addEventListener('resize', redrawGraph);
+</script>
+</body>
+</html>
